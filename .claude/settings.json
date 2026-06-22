@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"run.py --only code_codecontests\")",
+      "Bash(pkill -9 -f \"code_codecontests\")"
+    ]
+  }
+}

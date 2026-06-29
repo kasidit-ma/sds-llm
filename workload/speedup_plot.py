@@ -1,4 +1,4 @@
-"""3-panel speedup plot: (1) β vs actual + fit line, (2) est vs actual, (3) bar chart."""
+"""3-panel speedup plot: (1) β vs actual + fit line, (2) predicted vs actual, (3) bar chart."""
 import json
 from pathlib import Path
 
@@ -27,8 +27,9 @@ def plot(out_stem="speedup_plot"):
 
     betas = np.array([r["heaps"]["beta"] for r, _ in paired])
     actual = np.array([b["actual_speedup"] for _, b in paired])
-    from speedup import speedup as est_speedup
-    est = np.array([est_speedup(r) for r, _ in paired])
+    from speedup import predict
+    pred = predict(rows, bench)
+    est = np.array([pred[r["dataset_id"]] for r, _ in paired])
     labels = [r["dataset_id"].replace("_", "\n") for r, _ in paired]
     families = [r["family"] for r, _ in paired]
     c_arr = [COLORS[f] for f in families]
@@ -60,7 +61,7 @@ def plot(out_stem="speedup_plot"):
     ax.set_title("β vs actual speedup")
     ax.legend(fontsize=8)
 
-    # ── panel 2: est vs actual scatter (diagonal = perfect) ───────────────────
+    # ── panel 2: predicted vs actual scatter (diagonal = perfect) ─────────────
     ax = axes[1]
     lo, hi = min(actual.min(), est.min()) - 0.1, max(actual.max(), est.max()) + 0.1
     ax.plot([lo, hi], [lo, hi], "k--", lw=1, label="perfect prediction")
@@ -71,8 +72,8 @@ def plot(out_stem="speedup_plot"):
                     (b["actual_speedup"], e),
                     fontsize=7, textcoords="offset points", xytext=(4, 2))
     ax.set_xlabel("actual_speedup")
-    ax.set_ylabel("est_speedup (proxy)")
-    ax.set_title("est vs actual speedup")
+    ax.set_ylabel("pred_speedup (regression)")
+    ax.set_title("predicted vs actual speedup")
     mae = float(np.abs(est - actual).mean())
     ax.text(0.05, 0.95, f"MAE={mae:.3f}", transform=ax.transAxes,
             fontsize=9, va="top")
@@ -86,7 +87,7 @@ def plot(out_stem="speedup_plot"):
                     color=[c_arr[i] for i in order], edgecolor="black", label="actual")
     bars_e = ax.bar(x + 0.2, est[order], width=0.35,
                     color=[c_arr[i] for i in order], edgecolor="black",
-                    alpha=0.4, hatch="//", label="est (proxy)")
+                    alpha=0.4, hatch="//", label="predicted")
     short_labels = [labels[i] for i in order]
     ax.set_xticks(x)
     ax.set_xticklabels(short_labels, fontsize=6.5, rotation=45, ha="right")

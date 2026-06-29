@@ -1,18 +1,14 @@
-"""Theoretical n-gram spec-decoding speedup per dataset + curve fit from PBE P90.
+"""n-gram spec-decoding speedup: linear regression of actual_speedup on workload
+features (Heaps' β, PBE P90@1/2/4).
 
-`speedup()` returns a THEORETICAL LOWER-BOUND PROXY, not measured wall-clock:
-block efficiency = expected tokens per verifier pass, with per-position greedy
-acceptance a_k = fraction of contexts with branching=1 (the acceptance *ceiling*).
-A context that branches >1 way may still be drafted correctly, so the proxy
-under-counts -> lower bound. Trust the cross-dataset *ranking*, not the absolutes.
-Validating the fitted function needs a real benchmark `actual_speedup` column.
+`predicted_speedup = w0 + w1·β + w2·P90@1 + w3·P90@2 + w4·P90@4`, fit by least
+squares to measured `actual_speedup` (from bench_results.json). P90@1/2/4 enter as
+flat features — no product chain, so no unmeasured depth (e.g. @3) is needed.
 # ponytail: drafter cost = 0 (n-gram); add a (gamma*c) penalty if a model drafter is benchmarked
 """
 import json
 from pathlib import Path
 import numpy as np
-
-DRAFT_LEN = 4  # gamma: draft tokens proposed per step
 
 
 def accept(stat: dict) -> float:
@@ -21,17 +17,15 @@ def accept(stat: dict) -> float:
     return h.get("1", 0) / sum(h.values())
 
 
-def speedup(result: dict) -> float:
-    """1 + a1 + a1*a2 + a1*a2*a3 + a1*a2*a3*a4  (gamma=4, a3 interpolated)."""
-    pbe = result["pbe"]
-    a1, a2, a4 = (accept(pbe[f"pbe@{n}"]) for n in (1, 2, 4))
-    a3 = (a2 + a4) / 2  # ponytail: linear interp of the one unmeasured depth; remeasure @3 if it matters
-    a = [a1, a2, a3, a4][:DRAFT_LEN]
-    s, prod = 1.0, 1.0
-    for ak in a:
-        prod *= ak
-        s += prod
-    return s
+def predict(rows, bench, cols=("beta", "1", "2", "4")) -> dict:
+    """In-sample regression prediction of actual_speedup per dataset.
+    # ponytail: in-sample (12 rows); no held-out split, same as _fit_one"""
+    pairs = [(r, bench[r["dataset_id"]]["actual_speedup"])
+             for r in rows if r["dataset_id"] in bench]
+    fit_rows, y = zip(*pairs)
+    X = _features(list(fit_rows), list(cols))
+    coef, *_ = np.linalg.lstsq(X, np.array(y), rcond=None)
+    return {r["dataset_id"]: float(p) for r, p in zip(fit_rows, X @ coef)}
 
 
 def _feature_val(r, c):
@@ -74,11 +68,6 @@ def _fit_report(rows, y, label) -> str:
         lines.append(f"      {label} = {terms} {m['coef'][-1]:+.3f}")
         lines.append(f"      per-family MAE: {per_fam}")
     return "\n".join(lines)
-
-
-def fit(rows) -> str:
-    """Fit nested models predicting est_speedup (proxy) from (beta, P90@1/2/4)."""
-    return _fit_report(rows, np.array([speedup(r) for r in rows]), "est_speedup")
 
 
 def fit_actual(rows, bench: dict) -> str:
@@ -145,16 +134,17 @@ def _load():
 
 if __name__ == "__main__":
     rows = _load()
+    bench = json.loads((Path(__file__).parent / "bench_results.json").read_text())
+    pred = predict(rows, bench)
     for r in rows:
-        print(f"  {r['dataset_id']:<22} β={r['heaps']['beta']:.3f}  speedup={speedup(r):.3f}")
+        print(f"  {r['dataset_id']:<22} β={r['heaps']['beta']:.3f}  "
+              f"pred={pred[r['dataset_id']]:.3f}  "
+              f"actual={bench[r['dataset_id']]['actual_speedup']:.3f}")
     print()
-    print(fit(rows))
+    print(fit_actual(rows, bench))
 
-    by_id = {r["dataset_id"]: r for r in rows}
-    assert all(speedup(r) >= 1 for r in rows), "speedup must be >= 1"
-    assert speedup(by_id["dialogue_dolly"]) > speedup(by_id["math_math"]), "easy should beat hard"
-    betas = [r["heaps"]["beta"] for r in rows]
-    sched = [speedup(r) for r in rows]
-    corr = np.corrcoef(betas, sched)[0, 1]
-    assert corr > 0, f"speedup should rise with β, got corr={corr:.2f}"
-    print(f"\nself-check OK (corr(β, speedup)={corr:.2f})")
+    assert all(p >= 1 for p in pred.values()), "predicted speedup must be >= 1"
+    r2 = _fit_one(rows, ["beta", "1", "2", "4"], np.array(
+        [bench[r["dataset_id"]]["actual_speedup"] for r in rows]))["r2"]
+    assert np.isfinite(r2), "fit R² must be finite"
+    print(f"\nself-check OK (fit R²={r2:.3f})")

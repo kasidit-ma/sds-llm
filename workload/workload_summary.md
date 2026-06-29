@@ -1,19 +1,19 @@
 ## PBE P90
 
-| dataset | family | tokens | β | P90@1 | P90@2 | P90@4 | est_speedup | actual_speedup |
+| dataset | family | tokens | β | P90@1 | P90@2 | P90@4 | pred_speedup | actual_speedup |
 |---|---|---|---|---|---|---|---|---|
-| code_humaneval | code | 30,474 | 0.662 | 2 | 2 | 2 | 3.66 | 3.37 |
-| code_mbpp | code | 21,344 | 0.696 | 2 | 2 | 2 | 3.72 | 3.42 |
-| code_python_instruct | code | 719,801 | 0.708 | 2 | 2 | 2 | 3.54 | 2.96 |
-| dialogue_alpaca | dialogue | 320,671 | 0.756 | 1 | 2 | 2 | 4.02 | 3.87 |
-| dialogue_dolly | dialogue | 481,837 | 0.768 | 1 | 1 | 1 | 4.23 | 4.03 |
-| dialogue_samsum | dialogue | 836,975 | 0.688 | 2 | 2 | 2 | 3.70 | 3.27 |
-| math_gsm8k | math | 905,581 | 0.632 | 2 | 2 | 3 | 3.33 | 2.35 |
-| math_math | math | 1,480,297 | 0.576 | 3 | 4 | 5 | 2.84 | 2.22 |
-| math_metamath | math | 1,182,229 | 0.603 | 3 | 3 | 4 | 2.94 | 2.33 |
-| nl_cnndailymail | nl | 4,239,428 | 0.671 | 2 | 2 | 2 | 3.77 | 3.11 |
-| nl_openwebtext | nl | 5,403,154 | 0.688 | 2 | 2 | 2 | 3.95 | 3.53 |
-| nl_wikitext103 | nl | 516,825 | 0.746 | 1 | 2 | 2 | 4.10 | 3.74 |
+| code_humaneval | code | 30,474 | 0.662 | 2 | 2 | 2 | 3.23 | 3.37 |
+| code_mbpp | code | 21,344 | 0.696 | 2 | 2 | 2 | 3.34 | 3.42 |
+| code_python_instruct | code | 719,801 | 0.708 | 2 | 2 | 2 | 3.38 | 2.96 |
+| dialogue_alpaca | dialogue | 320,671 | 0.756 | 1 | 2 | 2 | 3.84 | 3.87 |
+| dialogue_dolly | dialogue | 481,837 | 0.768 | 1 | 1 | 1 | 3.81 | 4.03 |
+| dialogue_samsum | dialogue | 836,975 | 0.688 | 2 | 2 | 2 | 3.31 | 3.27 |
+| math_gsm8k | math | 905,581 | 0.632 | 2 | 2 | 3 | 2.53 | 2.35 |
+| math_math | math | 1,480,297 | 0.576 | 3 | 4 | 5 | 2.18 | 2.22 |
+| math_metamath | math | 1,182,229 | 0.603 | 3 | 3 | 4 | 2.20 | 2.33 |
+| nl_cnndailymail | nl | 4,239,428 | 0.671 | 2 | 2 | 2 | 3.26 | 3.11 |
+| nl_openwebtext | nl | 5,403,154 | 0.688 | 2 | 2 | 2 | 3.31 | 3.53 |
+| nl_wikitext103 | nl | 516,825 | 0.746 | 1 | 2 | 2 | 3.81 | 3.74 |
 
 ## PBE mean
 
@@ -37,7 +37,7 @@
 **Purpose.** Curve fitting here learns an empirical mapping from workload
 characteristics (Heaps' β and PBE P90 at n=1,2,4) to the speedup of n-gram
 speculative decoding, so we can *predict* a workload's speedup before running the
-full benchmark: `est_speedup = f(β, P90@1, P90@2, P90@4)`.
+full benchmark: `pred_speedup = f(β, P90@1, P90@2, P90@4)`.
 
 > จุดประสงค์: เรียนความสัมพันธ์เชิงประจักษ์ระหว่างลักษณะ workload (β, PBE P90 ที่ n=1,2,4)
 > กับ speedup จริงของ n-gram speculative decoding เพื่อ *ทำนาย* speedup ของ workload ใหม่
@@ -46,35 +46,14 @@ full benchmark: `est_speedup = f(β, P90@1, P90@2, P90@4)`.
 **Pipeline.**
 ```
 dataset → measure β, P90@1, P90@2, P90@4
-        → [run n-gram spec decoding]  ← MISSING (no benchmark yet)
-        → actual_speedup
-        → fit f()  →  est_speedup  →  compare → error (MAE/RMSE/R²)
+        → run n-gram spec decoding → actual_speedup
+        → fit f() (least squares) → pred_speedup → residual (MAE/RMSE/R²)
 ```
 
-**est_speedup (theoretical proxy, NOT measured).** Block efficiency of an n-gram
-drafter (draft cost≈0, γ=4):
-`est_speedup = 1 + a₁ + a₁a₂ + a₁a₂a₃ + a₁a₂a₃a₄`, where `aₖ` = P(branching=1) at
-step k. This is a **lower bound**: a context that branches >1 way may still be
-drafted correctly, so it under-counts. Absolute values depend on the γ=4 /
-cost≈0 assumptions — only the cross-dataset **ranking** is robust.
-
-**Fit to proxy (est_speedup):**
-```
-fit: est_speedup ~ features (12 datasets, linear least squares, in-sample)
-
-  [β, P90@1, P90@2, P90@4] R²=0.953 MAE=0.064 RMSE=0.090
-      est_speedup = -0.670·β + -0.380·P90@1 + +0.286·P90@2 + -0.391·P90@4 +5.163
-      per-family MAE: code=0.09  dialogue=0.05  math=0.03  nl=0.09
-  [β, P90@1, P90@2       ] R²=0.907 MAE=0.101 RMSE=0.127
-      est_speedup = +3.392·β + -0.184·P90@1 + -0.151·P90@2 +2.015
-      per-family MAE: code=0.10  dialogue=0.05  math=0.10  nl=0.15
-  [β, P90@1              ] R²=0.886 MAE=0.114 RMSE=0.140
-      est_speedup = +4.486·β + -0.221·P90@1 +1.012
-      per-family MAE: code=0.12  dialogue=0.07  math=0.09  nl=0.17
-  [β                     ] R²=0.872 MAE=0.114 RMSE=0.148
-      est_speedup = +6.831·β -1.012
-      per-family MAE: code=0.15  dialogue=0.05  math=0.09  nl=0.16
-```
+**pred_speedup (linear regression).** A least-squares fit of measured
+`actual_speedup` on the workload features: `pred_speedup = w0 + w1·β + w2·P90@1 +
+w3·P90@2 + w4·P90@4`. Features enter flat (no product chain), so no unmeasured
+depth is required. β carries most of the signal.
 
 **Fit to actual_speedup — linear:**
 ```
@@ -107,30 +86,28 @@ poly fit: actual_speedup (12 datasets, in-sample)
 ```
 β carries most of the signal; polynomial adds little over linear given only 12 datasets.
 
-**Evaluation & improvement (next stage, once `actual_speedup` is measured).**
-`error = est_speedup − actual_speedup`. A mismatch is **feedback to refine the
-estimator, not a failed experiment**: if error is high, break it down per family
-(code/math/dialogue/nl) to see whether one function suffices or a `family` term
-is needed; check whether the 4 features are enough (else add acceptance_rate /
-repetition_rate as a later stage); compare model variants and keep the lowest
-MAE/RMSE. Fill the `actual_speedup` column and re-run `table.py` to fit against
-real data.
+**Evaluation & improvement.** `residual = pred_speedup − actual_speedup`. A high
+residual is **feedback to refine the estimator, not a failed experiment**: break it
+down per family (code/math/dialogue/nl) to see whether one function suffices or a
+`family` term is needed; check whether the 4 features are enough (else add
+acceptance_rate / repetition_rate as a later stage); compare model variants and keep
+the lowest MAE/RMSE. Re-run with real (non-simulation) `actual_speedup` to validate.
 
-**est vs actual_speedup (simulation):**
+**pred vs actual_speedup (simulation):**
 
-| dataset | est_speedup | actual_speedup | error |
+| dataset | pred_speedup | actual_speedup | residual |
 |---|---|---|---|
-| code_humaneval | 3.66 | 3.37 | +0.29 |
-| code_mbpp | 3.72 | 3.42 | +0.31 |
-| code_python_instruct | 3.54 | 2.96 | +0.58 |
-| dialogue_alpaca | 4.02 | 3.87 | +0.15 |
-| dialogue_dolly | 4.23 | 4.03 | +0.20 |
-| dialogue_samsum | 3.70 | 3.27 | +0.43 |
-| math_gsm8k | 3.33 | 2.35 | +0.98 |
-| math_math | 2.84 | 2.22 | +0.62 |
-| math_metamath | 2.94 | 2.33 | +0.61 |
-| nl_cnndailymail | 3.77 | 3.11 | +0.67 |
-| nl_openwebtext | 3.95 | 3.53 | +0.42 |
-| nl_wikitext103 | 4.10 | 3.74 | +0.37 |
+| code_humaneval | 3.23 | 3.37 | -0.14 |
+| code_mbpp | 3.34 | 3.42 | -0.08 |
+| code_python_instruct | 3.38 | 2.96 | +0.42 |
+| dialogue_alpaca | 3.84 | 3.87 | -0.03 |
+| dialogue_dolly | 3.81 | 4.03 | -0.22 |
+| dialogue_samsum | 3.31 | 3.27 | +0.04 |
+| math_gsm8k | 2.53 | 2.35 | +0.18 |
+| math_math | 2.18 | 2.22 | -0.04 |
+| math_metamath | 2.20 | 2.33 | -0.13 |
+| nl_cnndailymail | 3.26 | 3.11 | +0.15 |
+| nl_openwebtext | 3.31 | 3.53 | -0.21 |
+| nl_wikitext103 | 3.81 | 3.74 | +0.07 |
 
-MAE=0.468  RMSE=0.519
+MAE=0.143  RMSE=0.178

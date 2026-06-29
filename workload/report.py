@@ -5,6 +5,8 @@ from pathlib import Path
 from docx import Document
 from docx.shared import Inches
 
+import speedup
+
 HERE = Path(__file__).parent
 RESULTS = HERE / "results"
 
@@ -19,6 +21,66 @@ def _add_table(doc, header, rows_data):
         for c, v in zip(cells, rd):
             c.text = str(v)
     return t
+
+
+def _week6_speedup(doc, rows):
+    bench_path = HERE / "bench_results.json"
+    if not bench_path.exists():
+        return
+    bench = json.loads(bench_path.read_text())
+    pred = speedup.predict(rows, bench)
+
+    doc.add_heading("6. week6 — Speedup & curve fitting", 1)
+
+    doc.add_paragraph(
+        "Flow ของ speedup (STAGE A): corpus → tokenize (Qwen2.5) → วัด feature 2 ตัว "
+        "(Heaps' β และ PBE P90@1/2/4) พร้อมรัน n-gram spec-decode แบบ simulation "
+        "(actual_speedup = baseline_steps / spec_steps = token เฉลี่ยที่ accept ต่อรอบ "
+        "verifier). simulation ตั้ง drafter cost = 0 และ accept อย่างน้อย 1 token/รอบ "
+        "→ ค่า >1 เสมอเชิงกลไก จึงเชื่อ *การเรียงลำดับข้าม dataset* ไม่ใช่ค่าสัมบูรณ์.")
+    doc.add_paragraph(
+        "Flow ของ curve fitting (STAGE B): เอา feature + actual_speedup ทั้ง 12 dataset มา "
+        "fit linear least squares ได้  pred_speedup = w0 + w1·β + w2·P90@1 + w3·P90@2 + "
+        "w4·P90@4. feature เข้าแบบแบนๆ (ไม่ใช่ product chain) จึงไม่ต้องพึ่ง depth ที่ไม่ได้วัด "
+        "(เช่น @3). ปลายทางที่นำไปใช้: workload ใหม่แค่วัด feature (ถูก) แล้วทำนาย speedup "
+        "ได้เลยโดยไม่ต้องรัน benchmark เต็ม.")
+
+    fp = HERE / "speedup_flow.png"
+    if fp.exists():
+        doc.add_picture(str(fp), width=Inches(6.3))
+        cap = doc.add_paragraph(
+            "Flow 2 stage: (A) วัด feature + simulation ได้ actual_speedup, "
+            "(B) fit regression แล้วนำไปทำนาย workload ใหม่โดยไม่ต้อง benchmark.")
+        cap.style = "Caption"
+
+    doc.add_paragraph("ผลทำนายเทียบค่าจริง (residual = pred − actual):")
+    _add_table(
+        doc, ["dataset", "family", "β", "pred", "actual", "residual"],
+        [(r["dataset_id"], r["family"], f"{r['heaps']['beta']:.3f}",
+          f"{pred[r['dataset_id']]:.2f}",
+          f"{bench[r['dataset_id']]['actual_speedup']:.2f}",
+          f"{pred[r['dataset_id']] - bench[r['dataset_id']]['actual_speedup']:+.2f}")
+         for r in rows if r["dataset_id"] in bench])
+
+    doc.add_paragraph("ผลการ fit (nested models, linear least squares, in-sample):")
+    fit_p = doc.add_paragraph(speedup.fit_actual(rows, bench))
+    fit_p.style = "No Spacing"
+
+    fp2 = HERE / "speedup_plot.png"
+    if fp2.exists():
+        doc.add_picture(str(fp2), width=Inches(6.3))
+        cap = doc.add_paragraph(
+            "(1) β vs actual + เส้น fit, (2) predicted vs actual (เส้นทแยง = ทำนายเป๊ะ), "
+            "(3) bar chart ต่อ dataset เรียงตาม actual_speedup.")
+        cap.style = "Caption"
+
+    for b in [
+        "β เป็น feature ที่อธิบาย speedup ได้มากสุด — โมเดล β เดี่ยวก็ R² สูงแล้ว.",
+        "dialogue/nl (ซ้ำเยอะ เดาง่าย) speedup สูงสุด ~3.8–4.0; math (ยาก) ต่ำสุด ~2.2.",
+        "ขั้นถัดไป: รัน wall-clock จริง (มี drafter cost) ทับ simulation แล้ว fit ใหม่ — "
+        "โค้ดไม่ต้องแก้ แค่ bench_results.json เปลี่ยน.",
+    ]:
+        doc.add_paragraph(b, style="List Bullet")
 
 
 def build(out_name="workload_report.docx"):
@@ -84,6 +146,8 @@ def build(out_name="workload_report.docx"):
         "HumanEval/MBPP มี token น้อย (~20–30k) → β อาจไม่นิ่งเท่าตัวอื่น.",
     ]:
         doc.add_paragraph(b, style="List Bullet")
+
+    _week6_speedup(doc, rows)
 
     doc.save(HERE / out_name)
     print(f"saved {out_name}")

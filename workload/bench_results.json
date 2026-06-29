@@ -1,0 +1,110 @@
+{
+  "code_humaneval": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3794,
+    "actual_speedup": 3.373748023194518,
+    "mean_accepted_per_step": 3.373748023194518,
+    "n_samples": 200,
+    "family": "code"
+  },
+  "code_mbpp": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3747,
+    "actual_speedup": 3.416066186282359,
+    "mean_accepted_per_step": 3.416066186282359,
+    "n_samples": 200,
+    "family": "code"
+  },
+  "code_python_instruct": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 4326,
+    "actual_speedup": 2.9588534442903374,
+    "mean_accepted_per_step": 2.9588534442903374,
+    "n_samples": 200,
+    "family": "code"
+  },
+  "math_metamath": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 5494,
+    "actual_speedup": 2.3298143429195486,
+    "mean_accepted_per_step": 2.3298143429195486,
+    "n_samples": 200,
+    "family": "math"
+  },
+  "nl_wikitext103": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3426,
+    "actual_speedup": 3.7361354349095155,
+    "mean_accepted_per_step": 3.7361354349095155,
+    "n_samples": 200,
+    "family": "nl"
+  },
+  "nl_cnndailymail": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 4120,
+    "actual_speedup": 3.1067961165048543,
+    "mean_accepted_per_step": 3.1067961165048543,
+    "n_samples": 200,
+    "family": "nl"
+  },
+  "nl_openwebtext": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3630,
+    "actual_speedup": 3.5261707988980717,
+    "mean_accepted_per_step": 3.5261707988980717,
+    "n_samples": 200,
+    "family": "nl"
+  },
+  "math_gsm8k": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 5440,
+    "actual_speedup": 2.3529411764705883,
+    "mean_accepted_per_step": 2.3529411764705883,
+    "n_samples": 200,
+    "family": "math"
+  },
+  "math_math": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 5754,
+    "actual_speedup": 2.224539450816823,
+    "mean_accepted_per_step": 2.224539450816823,
+    "n_samples": 200,
+    "family": "math"
+  },
+  "dialogue_alpaca": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3308,
+    "actual_speedup": 3.8694074969770256,
+    "mean_accepted_per_step": 3.8694074969770256,
+    "n_samples": 200,
+    "family": "dialogue"
+  },
+  "dialogue_samsum": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3909,
+    "actual_speedup": 3.2744947556919928,
+    "mean_accepted_per_step": 3.2744947556919928,
+    "n_samples": 200,
+    "family": "dialogue"
+  },
+  "dialogue_dolly": {
+    "mode": "simulation",
+    "baseline_steps": 12800,
+    "spec_steps": 3176,
+    "actual_speedup": 4.030226700251889,
+    "mean_accepted_per_step": 4.030226700251889,
+    "n_samples": 200,
+    "family": "dialogue"
+  }
+}

@@ -1,0 +1,50 @@
+[project]
+name = "sds-llm"
+version = "0.1.0"
+description = "Workload-aware n-gram speculative-decoding simulator and decision system"
+requires-python = ">=3.10"
+dependencies = [
+    "datasets",
+    "transformers",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "pyright"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# src layout: each subdir under src/ is its own importable package
+package-dir = { "" = "src" }
+packages = [
+    "interface",
+    "drafter",
+    "verifier",
+    "playback",
+    "metrics",
+    "spec_bench",
+    "workload",
+    "estimation",
+    "decision",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pyright]
+include = ["src", "tests", "run.py"]
+extraPaths = ["src"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+reportMissingImports = false   # transformers/datasets are optional runtime deps

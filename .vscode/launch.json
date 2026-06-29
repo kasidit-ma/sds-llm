@@ -1,0 +1,66 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "run.py: HumanEval",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run.py",
+      "args": ["--dataset", "code_humaneval"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+    },
+    {
+      "name": "run.py: pick dataset",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run.py",
+      "args": ["--dataset", "${input:dataset}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+    },
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+    },
+    {
+      "name": "pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "dataset",
+      "type": "pickString",
+      "description": "Dataset id (from configs/dataset.yaml)",
+      "default": "code_humaneval",
+      "options": [
+        "code_humaneval",
+        "code_mbpp",
+        "code_python_instruct",
+        "math_metamath",
+        "nl_wikitext103",
+        "nl_cnndailymail",
+        "nl_openwebtext",
+        "math_gsm8k",
+        "math_math",
+        "dialogue_alpaca",
+        "dialogue_samsum",
+        "dialogue_dolly"
+      ]
+    }
+  ]
+}

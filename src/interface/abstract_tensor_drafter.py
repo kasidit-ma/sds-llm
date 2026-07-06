@@ -8,9 +8,9 @@ class AbstractTensorDrafter(ABC):
     @abstractmethod
     def build_datastore(self, corpus_tokens: Any) -> None:
         """Index a tensor of token ids."""
-        raise NotImplementedError("Milestone M5 — see plan")
+        raise NotImplementedError("Milestone M6 — see plan")
 
     @abstractmethod
     def propose(self, context: Any, K: int, mode: str = "depth") -> Any:
         """Propose draft tokens as a tensor."""
-        raise NotImplementedError("Milestone M5 — see plan")
+        raise NotImplementedError("Milestone M6 — see plan")

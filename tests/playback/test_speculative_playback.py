@@ -23,6 +23,18 @@ def test_baseline_one_token_per_step():
     assert compute_metrics(log).actual_speedup == 1.0
 
 
+def test_start_skips_context_prefill():
+    log = SpeculativePlayback().run([9, 9, 9, 1, 2, 3], drafter=None, start=3)
+    assert log.steps == 3
+    assert log.total_tokens == 3
+
+    d = NGramDrafter(n=2)
+    d.build_datastore([9, 9, 9, 1, 2, 1, 2, 1, 2])
+    log = SpeculativePlayback().run([9, 9, 9, 1, 2, 1, 2, 1, 2], drafter=d, K=10, start=3)
+    assert log.total_tokens == 6
+    assert log.steps < 6  # speedup measured over the generation part only
+
+
 def test_useless_drafter_no_speedup():
     target = [1, 2, 3, 4, 5]
     log = SpeculativePlayback().run(target, drafter=WrongDrafter(), K=4, mode="depth")

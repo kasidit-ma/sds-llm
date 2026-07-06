@@ -1,12 +1,12 @@
-"""Turn acceptance probability into estimated speedup. Stub — Milestone 4.
+"""Turn acceptance probability into estimated speedup.
 
 E[A] = p + p^2 + ... + p^K ;  estimated_speedup = 1 + E[A].
 """
 
 
 def expected_accepted(p: float, K: int) -> float:
-    raise NotImplementedError("Milestone M4 — see plan")
+    return sum(p**i for i in range(1, K + 1))
 
 
 def estimated_speedup(p: float, K: int) -> float:
-    raise NotImplementedError("Milestone M4 — see plan")
+    return 1.0 + expected_accepted(p, K)

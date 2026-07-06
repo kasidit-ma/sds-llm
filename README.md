@@ -2,123 +2,95 @@
 
 Workload-aware **n-gram speculative-decoding** simulator and decision system.
 
-The project characterizes a workload (Heaps β, PBE@k, repetition), predicts acceptance/speedup,
-and decides whether to use speculative decoding and whether to draft *depth* (one long chain) or
-*width* (several short candidates) — then runs it.
+**What it does** — characterizes a text workload (Heaps β, PBE@k, repetition), predicts the
+acceptance rate and speedup that speculative decoding would achieve on it, and decides whether
+to use speculative decoding at all — and whether to draft *depth* (one long chain) or *width*
+(several short candidates).
+
+**Problem it solves** — deciding if speculative decoding is worth it for a *new* dataset
+normally requires a full GPU benchmark. This project predicts the answer from cheap, statistical
+features of the text alone.
+
+**Who it's for** — researchers/engineers evaluating n-gram speculative decoding across workloads
+(code, math, NL, dialogue) without running a live model.
 
 It is a **simulator, not a live LLM**: a recorded token sequence is the "target", an n-gram
 drafter proposes continuations, a greedy verifier checks them against the recording, and speedup
 is measured in decode steps. No model weights, no GPU — the whole thing runs on token-id lists.
 
+Development status lives in [docs/roadmap.md](docs/roadmap.md).
+
 ---
 
-## How it works (the simulation model)
+## Tech stack
 
-Real speculative decoding spends one expensive model step to verify many cheap drafted tokens at
-once. We *simulate* that step-saving without running a model:
+- **Python ≥ 3.10**, `src/` layout — pure Python; the simulator itself is stdlib-only
+- [`datasets`](https://huggingface.co/docs/datasets) + [`transformers`](https://huggingface.co/docs/transformers) — load HF datasets, tokenize (default tokenizer: `Qwen/Qwen2.5-7B`)
+- `numpy` — least-squares fit of the acceptance model
+- `pyyaml` — configs
+- Dev: `ruff` (lint/format) · `pyright` (types) · `pytest`
 
-1. **Target** — a recorded token sequence (the greedy output we treat as ground truth).
-2. **Drafter** — builds an n-gram datastore from the tokens, then proposes the next few tokens
-   from the current context.
-3. **Verifier** — greedily compares the draft to the target, accepting the matching prefix and
-   stopping at the first mismatch.
-4. **Commit** — each step commits `accepted + 1` tokens: the accepted draft tokens *plus one free
-   token* (the verifier always produces the correct next token for free). So `pos += accepted + 1`.
-5. **Speedup** — baseline emits 1 token/step, so `actual_speedup = baseline_steps / speculative_steps`.
+---
 
-**Worked example** — at some position the target continues `[4, 2, 5]` and the drafter proposes
-`[4, 2, 9]`:
+## Install
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Run
+
+```bash
+python run.py --dataset code_humaneval                 # baseline vs depth vs width
+python run.py --dataset code_humaneval --n 4 --K 12    # tune n-gram order / draft budget
+python run.py --dataset code_humaneval --peek 2        # inspect raw rows + context/target split
+python run.py --dataset code_humaneval --features      # workload features (Heaps β, PBE, …)
+python run.py --benchmark                              # grid from experiment.yaml → results CSV
+python run.py --plots                                  # benchmark CSV → PNGs in artifacts/plots/
+python run.py --fit                                    # linear speedup fit table (a + b·β + c·PBE)
+./scripts/run_all_checks.sh                            # ruff + pyright + pytest
+```
+
+---
+
+## Example
+
+```console
+$ python run.py --dataset code_humaneval
+mode        speculative_steps   acceptance_rate   avg_accepted_per_step   actual_speedup
+baseline            8872             0.0000               0.0000              1.0000
+depth               1575             0.4933               4.7149              5.6330
+width               3141             0.6641               1.8548              2.8246
+```
+
+Steps are counted over the generation part only (the prompt is prefill). Code is
+low-branching, so **depth** wins big (long correct chains); **width** accepts more often but
+commits fewer tokens per step.
+
+Fit the acceptance/speedup predictor on a benchmark CSV:
+
+```bash
+PYTHONPATH=src python -c \
+  "from estimation.curve_fitting import fit_from_benchmark; \
+   print(fit_from_benchmark('artifacts/results/benchmark_results.csv'))"
+```
+
+### How a step works
+
+Each verify step commits `accepted + 1` tokens — the accepted draft prefix plus one free
+correct token from the verifier — so `actual_speedup = baseline_steps / speculative_steps`:
 
 ```
 target : 4  2  5
 draft  : 4  2  9
          ✓  ✓  ✗        accepted = 2
-commit : 4  2  5         → 3 tokens in ONE step (2 accepted + 1 free correct token)
+commit : 4  2  5         → 3 tokens in ONE step (2 accepted + 1 free)
 ```
-
-A baseline decode would have taken 3 steps for those 3 tokens; speculative took 1.
-
-### Depth vs Width drafting
 
 | Mode | Draft shape | Good for |
 |------|-------------|----------|
-| **depth** | one long chain `[a, b, c, …]` | low branching / high repetition (code, logs) — long deterministic continuations |
-| **width** | several short candidates `[[a,b],[a,c],[d,e]]` | prefixes that branch many ways — verifier picks the candidate that accepts the most |
-
----
-
-## Pipeline
-
-```
-                          ┌─────────── M1 (implemented) ───────────┐
- dataset.yaml ─► data ─► tokenizer ─► drafter ─► verifier ─► playback ─► metrics
-                                       (n-gram)   (greedy)    (steps)    (speedup)
-                                                                  │
-                          ┌──────────── M2–M4 (stubs) ────────────┘
- tokens ─► workload character ─► acceptance/speedup predictor ─► decision (no-spec / depth / width)
-           (Heaps β, PBE@k,        (fit on benchmark ground truth)
-            repetition)
-```
-
----
-
-## Project structure
-
-```
-sds-llm/
-├── run.py                 # CLI: load a dataset → run baseline/depth/width → print metrics table
-├── pyproject.toml         # deps + ruff / pyright / pytest config (src layout)
-│
-├── configs/
-│   ├── dataset.yaml       # tokenizer + 12 HF datasets (code/math/nl/dialogue) + PBE params
-│   ├── ngram.yaml         # n / K / S / T defaults
-│   └── experiment.yaml    # benchmark grid (M3)
-│
-├── src/
-│   ├── interface/         # ABCs every implementation honors            [done]
-│   │   ├── abstract_drafter.py        # build_datastore() + propose()
-│   │   ├── abstract_verifier.py       # verify() + verify_best()
-│   │   ├── abstract_playback.py       # run() + StepLog dataclass
-│   │   └── abstract_tensor_*.py       # tensor contracts                [stub, M5]
-│   ├── drafter/
-│   │   ├── ngram_drafter.py           # NGramDrafter: depth + width      [done]
-│   │   └── tensor_ngram_drafter.py    #                                  [stub, M5]
-│   ├── verifier/
-│   │   ├── greedy_verifier.py         # GreedyVerifier: greedy + multi-seq best  [done]
-│   │   └── tensor_greedy_verifier.py  #                                  [stub, M5]
-│   ├── playback/
-│   │   └── speculative_playback.py    # SpeculativePlayback (drafter=None ⇒ baseline)  [done]
-│   ├── metrics/
-│   │   └── playback_metrics.py        # StepLog → PlaybackMetrics (speedup, acceptance)  [done]
-│   ├── spec_bench/
-│   │   ├── data.py                    # parse dataset.yaml, HF load, tokenize  [done]
-│   │   ├── benchmark.py               # grid → CSV                      [stub, M3]
-│   │   └── speedup.py                 # aggregate                       [stub, M3]
-│   ├── workload/                      # heaps, pbe, repetition, characterizer  [stub, M2]
-│   ├── estimation/                    # acceptance_model, speedup_estimator, …  [stub, M4]
-│   └── decision/
-│       └── policy.py                  # decide(no-spec / depth / width) [stub, M4]
-│
-├── tests/                 # mirrors src/; M1 modules tested, M2/M4 tests skipped
-├── scripts/               # run_tests / run_lint / run_typecheck / run_all_checks .sh
-├── docs/                  # architecture, experiment_plan, workload_character
-└── artifacts/             # results/ plots/ logs/ (generated)
-```
-
----
-
-## Metrics
-
-`metrics/playback_metrics.py` turns a run's `StepLog` into:
-
-| Metric | Meaning |
-|--------|---------|
-| `baseline_steps` | total tokens (baseline = 1 token/step) |
-| `speculative_steps` | steps the simulator actually took |
-| `actual_speedup` | `baseline_steps / speculative_steps` — the headline number |
-| `acceptance_rate` | `accepted_tokens / drafted_tokens` — how often drafts were right |
-| `max_accepted_per_step` | best single-step acceptance |
-| `avg_accepted_per_step` | mean accepted draft tokens per step |
+| **depth** | one long chain `[a, b, c, …]` | low branching / high repetition (code, logs) |
+| **width** | several short candidates `[[a,b],[a,c],[d,e]]` | branchy prefixes — verifier picks the best candidate |
 
 ---
 
@@ -138,69 +110,96 @@ datasets:
     hf_path: openai/openai_humaneval
     split: test
     family: code
-    text_combine: [prompt, canonical_solution]   # concat these columns
-  - id: nl_wikitext103
-    hf_path: Salesforce/wikitext
-    hf_config: wikitext-103-raw-v1               # dataset config name
+    context_columns: [prompt]                    # prompt / prefill (free — not decoded)
+    target_columns: [canonical_solution]         # what the simulator "generates"
+  - id: nl_coqa
+    hf_path: stanfordnlp/coqa
     split: train
     family: nl
-    text_column: text                            # single column
+    context_columns: [story, questions]          # list columns are joined with \n
+    target_columns: [answers.input_text]         # dotted key reaches into nested dicts
   # … 12 datasets total across code / math / nl / dialogue
 ```
 
-- `text_column` vs `text_combine` — read one column, or concat several into the sample text.
+- `context_columns` + `target_columns` — split each row into prompt (prefill, boundary) vs
+  generation; steps and speedup are counted **only over the target part**. A plain
+  `text_column` is also supported (no prompt: the whole text is the target).
+- Workload features are computed per scope: `ctx_*` (observable before generation — what the
+  decision system may use) and `gen_*` (the generated text itself — the predictability
+  upper bound). Both land in the benchmark CSV; `fit_from_benchmark(csv, scope="ctx"|"gen")`.
 - `hf_config` — passed as the dataset config name; `streaming: true` — stream instead of download.
 
-`configs/ngram.yaml` holds `n / K / S / T` defaults; `configs/experiment.yaml` is the M3 grid.
+`configs/ngram.yaml` holds `n / K / S / T` defaults; `configs/experiment.yaml` is the benchmark grid.
 
 ---
 
-## Install
+## Metrics
 
-```bash
-pip install -e ".[dev]"
-```
+`metrics/playback_metrics.py` turns a run's `StepLog` into:
 
-## Run
-
-```bash
-python run.py --dataset code_humaneval                 # baseline vs depth vs width
-python run.py --dataset code_humaneval --n 4 --K 12    # tune n-gram order / draft budget
-```
-
-Example output (real HumanEval, Qwen tokenizer):
-
-```
-mode        speculative_steps   acceptance_rate   avg_accepted_per_step   actual_speedup
-baseline           30864             0.0000               0.0000              1.0000
-depth               5627             0.4854               4.5079              5.4850
-width              11018             0.6192               1.8098              2.8012
-```
-
-Code is low-branching, so **depth** wins big (long correct chains); **width** accepts more often
-but commits fewer tokens per step.
+| Metric | Meaning |
+|--------|---------|
+| `baseline_steps` | total tokens (baseline = 1 token/step) |
+| `speculative_steps` | steps the simulator actually took |
+| `actual_speedup` | `baseline_steps / speculative_steps` — the headline number |
+| `acceptance_rate` | `accepted_tokens / drafted_tokens` — how often drafts were right |
+| `max_accepted_per_step` | best single-step acceptance |
+| `avg_accepted_per_step` | mean accepted draft tokens per step |
 
 ---
 
-## Development
+## Project structure
 
-```bash
-./scripts/run_all_checks.sh     # ruff (lint) + pyright (types) + pytest
+```
+sds-llm/
+├── run.py                 # CLI: load a dataset → run baseline/depth/width → print metrics table
+├── pyproject.toml         # deps + ruff / pyright / pytest config (src layout)
+│
+├── configs/
+│   ├── dataset.yaml       # tokenizer + 12 HF datasets (code/math/nl/dialogue) + PBE params
+│   ├── ngram.yaml         # n / K / S / T defaults
+│   └── experiment.yaml    # benchmark grid
+│
+├── src/
+│   ├── interface/         # ABCs every implementation honors (tensor contracts are stubs)
+│   ├── drafter/           # NGramDrafter: depth + width drafting
+│   ├── verifier/          # GreedyVerifier: greedy prefix match + multi-seq best
+│   ├── playback/          # SpeculativePlayback (drafter=None ⇒ baseline)
+│   ├── metrics/           # StepLog → PlaybackMetrics (speedup, acceptance)
+│   ├── spec_bench/        # dataset loading/tokenizing, benchmark grid → CSV, aggregation
+│   ├── workload/          # Heaps β, PBE@k, repetition, characterizer
+│   ├── estimation/        # acceptance model fit, speedup estimator, evaluator
+│   └── decision/          # policy: no-spec / depth / width
+│
+├── tests/                 # mirrors src/; all non-tensor modules tested
+├── scripts/               # run_tests / run_lint / run_typecheck / run_all_checks .sh
+├── docs/                  # roadmap, architecture, experiment_plan, workload_character
+└── artifacts/             # results/ plots/ logs/ (generated)
 ```
 
-- `src/` layout — imports look like `from drafter.ngram_drafter import NGramDrafter`.
-- **Format-on-save** is enabled via ruff in [.vscode/settings.json](.vscode/settings.json)
-  (needs the *Ruff* extension).
-- Stubs raise `NotImplementedError("Milestone Mx")`; their tests are present but skipped.
+- Imports use the `src/` layout: `from drafter.ngram_drafter import NGramDrafter`.
+- **Format-on-save** via ruff in [.vscode/settings.json](.vscode/settings.json) (needs the *Ruff* extension).
+- Tensor variants are stubs raising `NotImplementedError("Milestone M6")` — see the [roadmap](docs/roadmap.md).
 
 ---
 
-## Roadmap
+## Common dev tasks
 
-| Milestone | Modules | State |
-|-----------|---------|-------|
-| **M1** simulator | `spec_bench/data`, `drafter/ngram_drafter`, `verifier/greedy_verifier`, `playback/speculative_playback`, `metrics/playback_metrics` | ✅ done |
-| **M2** workload character | `workload/{heaps,pbe,repetition,characterizer}` — Heaps β, PBE_P90@k, repetition | stub |
-| **M3** benchmark | `spec_bench/{benchmark,speedup}` — grid → `artifacts/results/*.csv` (ground truth) | stub |
-| **M4** estimation + decision | `estimation/*`, `decision/policy` — predict acceptance/speedup, choose mode | stub |
-| **M5** tensor + plots | `*/tensor_*`, plots into `artifacts/plots/` | stub |
+**Add a dataset** — three steps, no code:
+
+1. Add an entry to [configs/dataset.yaml](configs/dataset.yaml): `id`, `hf_path`, `split`,
+   `family`, and which columns are prompt vs generation (`context_columns` / `target_columns`).
+2. `python run.py --dataset <id> --peek 2` — check the raw columns and that the
+   context/target split looks right (rows with an empty target are skipped automatically).
+3. `python run.py --dataset <id>` — run it. Done.
+
+**Run the full benchmark** — `python run.py --benchmark` sweeps the grid in
+[configs/experiment.yaml](configs/experiment.yaml) (`datasets: []` = all) and writes
+`artifacts/results/benchmark_results.csv`; feed that CSV to `fit_from_benchmark` (see Example).
+
+**Add a drafter / verifier** — implement the ABCs in `src/interface/`
+(`build_datastore()`/`propose()`, `verify()`/`verify_best()`); `SpeculativePlayback` accepts any
+drafter, so nothing else changes. Mirror the module in `tests/`.
+
+**Where to read next** — [docs/architecture.md](docs/architecture.md) (design),
+[docs/roadmap.md](docs/roadmap.md) (what's done / what's next).

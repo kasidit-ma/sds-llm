@@ -23,15 +23,17 @@ class SpeculativePlayback(AbstractPlayback):
         drafter: AbstractDrafter | None = None,
         K: int = 10,
         mode: str = "depth",
+        start: int = 0,
     ) -> StepLog:
         target = list(target_tokens)
         total = len(target)
+        decode = total - start  # tokens[:start] = context, prefilled for free
 
         if drafter is None:
-            return StepLog(total_tokens=total, steps=total)
+            return StepLog(total_tokens=decode, steps=decode)
 
-        log = StepLog(total_tokens=total, steps=0)
-        pos = 0
+        log = StepLog(total_tokens=decode, steps=0)
+        pos = start
         while pos < total:
             # Drafter sees what is committed; its first token is a guess for target[pos].
             draft = drafter.propose(target[:pos], K, mode)

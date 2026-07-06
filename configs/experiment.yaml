@@ -1,5 +1,5 @@
-# Experiment grid for the offline benchmark (Milestone 3). Stub for now.
-datasets: [code_humaneval]      # ids from configs/dataset.yaml; [] = all
+# Experiment grid for the offline benchmark (Milestone 3).
+datasets: []                    # ids from configs/dataset.yaml; [] = all
 modes: [baseline, depth, width]
 n_values: [1, 2, 3, 4]
 K: 10

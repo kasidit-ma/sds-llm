@@ -27,9 +27,11 @@ class AbstractPlayback(ABC):
         drafter: AbstractDrafter | None = None,
         K: int = 10,
         mode: str = "depth",
+        start: int = 0,
     ) -> StepLog:
-        """Replay ``target_tokens`` one step at a time.
+        """Replay ``target_tokens`` one step at a time, decoding from position ``start``.
 
+        ``target_tokens[:start]`` is context (prefill — free, not counted as steps).
         ``drafter=None`` is the baseline (one token per step). With a drafter, each step proposes
         a draft, accepts the matching prefix plus one free correct token, and advances.
         """

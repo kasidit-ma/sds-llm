@@ -1,0 +1,129 @@
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[1/12] code_humaneval: 164 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.065
+  depth     n=2 speedup=2.590
+  depth     n=3 speedup=5.633
+  depth     n=4 speedup=7.943
+  width     n=1 speedup=1.214
+  width     n=2 speedup=2.533
+  width     n=3 speedup=2.825
+  width     n=4 speedup=2.887
+[2/12] code_mbpp: 374 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.090
+  depth     n=2 speedup=3.471
+  depth     n=3 speedup=6.406
+  depth     n=4 speedup=8.216
+  width     n=1 speedup=1.312
+  width     n=2 speedup=2.686
+  width     n=3 speedup=2.849
+  width     n=4 speedup=2.904
+[3/12] code_python_instruct: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.072
+  depth     n=2 speedup=2.870
+  depth     n=3 speedup=5.694
+  depth     n=4 speedup=7.894
+  width     n=1 speedup=1.238
+  width     n=2 speedup=2.576
+  width     n=3 speedup=2.835
+  width     n=4 speedup=2.911
+[4/12] math_metamath: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.112
+  depth     n=2 speedup=2.686
+  depth     n=3 speedup=4.782
+  depth     n=4 speedup=6.689
+  width     n=1 speedup=1.318
+  width     n=2 speedup=2.573
+  width     n=3 speedup=2.797
+  width     n=4 speedup=2.875
+[5/12] nl_squad_v2: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.054
+  depth     n=2 speedup=3.716
+  depth     n=3 speedup=4.399
+  depth     n=4 speedup=4.486
+  width     n=1 speedup=1.176
+  width     n=2 speedup=2.434
+  width     n=3 speedup=2.479
+  width     n=4 speedup=2.483
+[6/12] nl_coqa: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.025
+  depth     n=2 speedup=2.619
+  depth     n=3 speedup=6.310
+  depth     n=4 speedup=7.695
+  width     n=1 speedup=1.231
+  width     n=2 speedup=2.424
+  width     n=3 speedup=2.850
+  width     n=4 speedup=2.890
+[7/12] nl_cnndailymail: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.027
+  depth     n=2 speedup=2.487
+  depth     n=3 speedup=6.078
+  depth     n=4 speedup=7.822
+  width     n=1 speedup=1.106
+  width     n=2 speedup=2.464
+  width     n=3 speedup=2.824
+  width     n=4 speedup=2.889
+[8/12] math_gsm8k: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.161
+  depth     n=2 speedup=2.454
+  depth     n=3 speedup=4.240
+  depth     n=4 speedup=6.521
+  width     n=1 speedup=1.427
+  width     n=2 speedup=2.535
+  width     n=3 speedup=2.756
+  width     n=4 speedup=2.864
+[9/12] math_math: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.088
+  depth     n=2 speedup=2.534
+  depth     n=3 speedup=4.935
+  depth     n=4 speedup=6.745
+  width     n=1 speedup=1.285
+  width     n=2 speedup=2.520
+  width     n=3 speedup=2.805
+  width     n=4 speedup=2.882
+[10/12] dialogue_alpaca: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.092
+  depth     n=2 speedup=3.439
+  depth     n=3 speedup=7.599
+  depth     n=4 speedup=9.014
+  width     n=1 speedup=1.303
+  width     n=2 speedup=2.637
+  width     n=3 speedup=2.884
+  width     n=4 speedup=2.921
+[11/12] dialogue_samsum: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.008
+  depth     n=2 speedup=2.925
+  depth     n=3 speedup=6.251
+  depth     n=4 speedup=7.785
+  width     n=1 speedup=1.116
+  width     n=2 speedup=2.579
+  width     n=3 speedup=2.815
+  width     n=4 speedup=2.866
+[12/12] dialogue_dolly: 5000 samples, characterizing ...
+  baseline  n=0 speedup=1.000
+  depth     n=1 speedup=1.077
+  depth     n=2 speedup=3.001
+  depth     n=3 speedup=6.975
+  depth     n=4 speedup=8.859
+  width     n=1 speedup=1.248
+  width     n=2 speedup=2.562
+  width     n=3 speedup=2.874
+  width     n=4 speedup=2.929
+Wrote artifacts/results/benchmark_results.csv
+Wrote artifacts/plots/est_vs_actual.png
+Wrote artifacts/plots/speedup_by_dataset.png
+Wrote artifacts/plots/acceptance_vs_features.png
+Wrote artifacts/plots/speedup_vs_n.png
+Wrote artifacts/plots/features_by_family.png
+Wrote artifacts/plots/workload_character.png

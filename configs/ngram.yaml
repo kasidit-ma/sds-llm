@@ -1,0 +1,7 @@
+# N-gram speculative-decoding settings (defaults; CLI flags override).
+n: 3            # n-gram order: key = last (n-1) tokens
+K: 10           # draft budget (max draft tokens per step)
+
+# width-draft only:
+S: 5            # number of candidate sequences
+T: 2            # tokens per candidate sequence

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.DS_Store
+
+# generated outputs (keep the dirs via .gitkeep)
+artifacts/results/*
+artifacts/plots/*
+artifacts/logs/*
+!artifacts/**/.gitkeep

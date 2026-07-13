@@ -1,0 +1,8 @@
+# Experiment grid for the offline benchmark (Milestone 3).
+datasets: []                    # ids from configs/dataset.yaml; [] = all
+modes: [baseline, depth, width]
+n_values: [1, 2, 3, 4]
+K: 10
+S: 5
+T: 2
+output_csv: artifacts/results/benchmark_results.csv

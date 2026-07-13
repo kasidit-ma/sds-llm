@@ -1,0 +1,96 @@
+tokenizer: Qwen/Qwen2.5-7B          # สลับได้
+max_samples: 5000                    # cap ต่อ dataset
+min_tokens: 10000                    # ต่ำกว่านี้ warn ว่า β ไม่น่าเชื่อถือ
+pbe_steps: [1, 2, 4]                 # PBE@1, @2, @4
+pbe_prefix_len: 3                    # ความยาว prefix สำหรับ PBE
+
+datasets:
+  # ── Code ──
+  - id: code_humaneval
+    hf_path: openai/openai_humaneval
+    split: test                      # มีแค่ test (164 samples)
+    family: code
+    context_columns: [prompt]
+    target_columns: [canonical_solution]
+
+  - id: code_mbpp
+    hf_path: google-research-datasets/mbpp
+    split: train
+    family: code
+    context_columns: [text]      # โจทย์ภาษาอังกฤษ
+    target_columns: [code]
+
+  - id: code_python_instruct        # แทน the-stack (gated) — non-gated, ไม่ต้อง login
+    hf_path: iamtarun/python_code_instructions_18k_alpaca
+    split: train
+    family: code
+    context_columns: [instruction]
+    target_columns: [output]
+
+  - id: math_metamath              # แทน codecontests (stream ช้าเกิน) — flat, tokenize เร็ว
+    hf_path: meta-math/MetaMathQA
+    split: train
+    family: math
+    context_columns: [query]
+    target_columns: [response]
+
+  # ── Natural Language ──
+  - id: nl_squad_v2
+    hf_path: rajpurkar/squad_v2
+    split: train
+    family: nl
+    context_columns: [context, question]    # passage + คำถาม
+    target_columns: [answers.text]          # คำตอบ; ข้อที่ตอบไม่ได้ (list ว่าง) ถูกกรองทิ้ง
+
+  - id: nl_coqa
+    hf_path: stanfordnlp/coqa
+    split: train
+    family: nl
+    context_columns: [story, questions]     # เรื่อง + คำถามทุก turn (list ถูก join ด้วย \n)
+    target_columns: [answers.input_text]    # dotted key เข้า dict ซ้อน
+
+  - id: nl_cnndailymail
+    hf_path: abisee/cnn_dailymail
+    hf_config: "3.0.0"
+    split: train
+    family: nl
+    context_columns: [article]
+    target_columns: [highlights]
+
+  # ── Math / Reasoning ──
+  - id: math_gsm8k
+    hf_path: openai/gsm8k
+    hf_config: main
+    split: train
+    family: math
+    context_columns: [question]
+    target_columns: [answer]
+
+  - id: math_math
+    hf_path: nlile/hendrycks-MATH-benchmark   # lighteval/MATH เป็น loading-script เก่า ใช้ไม่ได้
+    split: train
+    family: math
+    context_columns: [problem]
+    target_columns: [solution]
+
+  # ── Dialogue / Chat ──
+  - id: dialogue_alpaca
+    hf_path: tatsu-lab/alpaca
+    split: train
+    family: dialogue
+    context_columns: [instruction, input]   # input เป็น optional — concat ถ้ามี
+    target_columns: [output]
+
+  - id: dialogue_samsum
+    hf_path: knkarthick/samsum    # Samsung/samsum เป็น loading-script เก่า ใช้ไม่ได้
+    split: train
+    family: dialogue
+    context_columns: [dialogue]
+    target_columns: [summary]
+
+  - id: dialogue_dolly
+    hf_path: databricks/databricks-dolly-15k
+    split: train
+    family: dialogue
+    context_columns: [instruction, context]
+    target_columns: [response]
